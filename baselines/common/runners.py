@@ -13,7 +13,13 @@ class AbstractEnvRunner(ABC):
         self.states = model.initial_state
         self.dones = [False for _ in range(nenv)]
 
+        # Additions to support "Learning to reinforcement learn"
+        self.p_actions = np.zeros((nenv), dtype=np.int32)
+        self.p_rewards = np.zeros((nenv, 1))
+        self.timesteps = np.zeros((nenv, 1))
+
     @abstractmethod
     def run(self):
         raise NotImplementedError
 
+    

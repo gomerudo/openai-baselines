@@ -15,7 +15,7 @@ class PolicyWithValue(object):
     Encapsulates fields and methods for RL policy and value function estimation with shared parameters
     """
 
-    def __init__(self, env, observations, latent, estimate_q=False, vf_latent=None, sess=None, **tensors):
+    def __init__(self, env, observations, latent, estimate_q=False, vf_latent=None, sess=None, is_meta=False, p_action=None, p_reward=None, timestep=None,**tensors):
         """
         Parameters:
         ----------
@@ -34,6 +34,10 @@ class PolicyWithValue(object):
         """
 
         self.X = observations
+        self.is_meta = is_meta
+        self.p_action = p_action
+        self.p_reward = p_reward
+        self.timestep = timestep
         self.state = tf.constant([])
         self.initial_state = None
         self.__dict__.update(tensors)
@@ -63,9 +67,21 @@ class PolicyWithValue(object):
             self.vf = fc(vf_latent, 'vf', 1)
             self.vf = self.vf[:,0]
 
-    def _evaluate(self, variables, observation, **extra_feed):
+    def _evaluate(self, variables, observation, ob_pa=None, ob_pr=None, ob_t=None, **extra_feed):
         sess = self.sess
-        feed_dict = {self.X: adjust_shape(self.X, observation)}
+        feed_dict = {
+            self.X: adjust_shape(self.X, observation)
+        }
+        
+        if self.is_meta:
+            meta_dict = {
+                self.p_reward: adjust_shape(self.p_reward, ob_pr),
+                self.timestep: adjust_shape(self.timestep, ob_t),
+                self.p_action: adjust_shape(self.p_action, ob_pa),
+            }
+            # Update
+            feed_dict.update(meta_dict)
+
         for inpt_name, data in extra_feed.items():
             if inpt_name in self.__dict__.keys():
                 inpt = self.__dict__[inpt_name]
@@ -74,7 +90,7 @@ class PolicyWithValue(object):
 
         return sess.run(variables, feed_dict)
 
-    def step(self, observation, **extra_feed):
+    def step(self, observation, p_action=None, p_reward=None, timestep=None, **extra_feed):
         """
         Compute next action(s) given the observation(s)
 
@@ -89,13 +105,19 @@ class PolicyWithValue(object):
         -------
         (action, value estimate, next state, negative log likelihood of the action under current policy parameters) tuple
         """
-
-        a, v, state, neglogp = self._evaluate([self.action, self.vf, self.state, self.neglogp], observation, **extra_feed)
+        a, v, state, neglogp = self._evaluate(
+            [self.action, self.vf, self.state, self.neglogp],
+            observation,
+            p_action,
+            p_reward,
+            timestep,
+            **extra_feed
+        )
         if state.size == 0:
             state = None
         return a, v, state, neglogp
 
-    def value(self, ob, *args, **kwargs):
+    def value(self, ob, p_action=None, p_reward=None, timestep=None, *args, **kwargs):
         """
         Compute value estimate(s) given the observation(s)
 
@@ -110,7 +132,8 @@ class PolicyWithValue(object):
         -------
         value estimate
         """
-        return self._evaluate(self.vf, ob, *args, **kwargs)
+        aux = self._evaluate(self.vf, ob, p_action, p_reward, timestep, *args, **kwargs)
+        return aux
 
     def save(self, save_path):
         tf_util.save_state(save_path, sess=self.sess)
@@ -118,7 +141,7 @@ class PolicyWithValue(object):
     def load(self, load_path):
         tf_util.load_state(load_path, sess=self.sess)
 
-def build_policy(env, policy_network, value_network=None,  normalize_observations=False, estimate_q=False, **policy_kwargs):
+def build_policy(env, policy_network, value_network=None, normalize_observations=False, estimate_q=False, **policy_kwargs):
     if isinstance(policy_network, str):
         network_type = policy_network
         policy_network = get_network_builder(network_type)(**policy_kwargs)
@@ -138,8 +161,17 @@ def build_policy(env, policy_network, value_network=None,  normalize_observation
 
         encoded_x = encode_observation(ob_space, encoded_x)
 
+        # Placeholders for meta-information
+        p_reward = tf.placeholder(shape=[nbatch, 1], dtype=tf.float32, name="p_reward")
+        p_action = tf.placeholder(shape=[nbatch], dtype=tf.int32, name="p_action")
+        timestep = tf.placeholder(shape=[nbatch, 1], dtype=tf.float32, name="timestep")
+
         with tf.variable_scope('pi', reuse=tf.AUTO_REUSE):
-            policy_latent = policy_network(encoded_x)
+            if network_type.startswith("meta"):
+                policy_latent = policy_network(encoded_x, p_reward, timestep, p_action, env.action_space.n)
+            else:
+                policy_latent = policy_network(encoded_x)
+
             if isinstance(policy_latent, tuple):
                 policy_latent, recurrent_tensors = policy_latent
 
@@ -147,7 +179,13 @@ def build_policy(env, policy_network, value_network=None,  normalize_observation
                     # recurrent architecture, need a few more steps
                     nenv = nbatch // nsteps
                     assert nenv > 0, 'Bad input for recurrent policy: batch size {} smaller than nsteps {}'.format(nbatch, nsteps)
-                    policy_latent, recurrent_tensors = policy_network(encoded_x, nenv)
+
+                    # Check for meta-models (Learning to reinforcement learn)
+                    if network_type.startswith("meta"):
+                        policy_latent, recurrent_tensors = policy_network(encoded_x, p_reward, timestep, p_action, env.action_space.n, nenv)
+                    else:
+                        policy_latent, recurrent_tensors = policy_network(encoded_x, nenv)
+
                     extra_tensors.update(recurrent_tensors)
 
 
@@ -165,15 +203,30 @@ def build_policy(env, policy_network, value_network=None,  normalize_observation
                 # TODO recurrent architectures are not supported with value_network=copy yet
                 vf_latent = _v_net(encoded_x)
 
-        policy = PolicyWithValue(
-            env=env,
-            observations=X,
-            latent=policy_latent,
-            vf_latent=vf_latent,
-            sess=sess,
-            estimate_q=estimate_q,
-            **extra_tensors
-        )
+        if network_type.startswith("meta"):
+            policy = PolicyWithValue(
+                env=env,
+                observations=X,
+                latent=policy_latent,
+                vf_latent=vf_latent,
+                sess=sess,
+                estimate_q=estimate_q,
+                is_meta=True,
+                p_action=p_action,
+                p_reward=p_reward,
+                timestep=timestep,
+                **extra_tensors
+            )
+        else:
+            policy = PolicyWithValue(
+                env=env,
+                observations=X,
+                latent=policy_latent,
+                vf_latent=vf_latent,
+                sess=sess,
+                estimate_q=estimate_q,
+                **extra_tensors
+            )
         return policy
 
     return policy_fn

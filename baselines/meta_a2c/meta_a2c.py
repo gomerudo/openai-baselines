@@ -10,7 +10,8 @@ from baselines.common.policies import build_policy
 
 
 from baselines.a2c.utils import Scheduler, find_trainable_variables
-from baselines.a2c.runner import Runner
+from baselines.meta_a2c.runner import Runner
+import numpy as np
 
 from tensorflow import losses
 
@@ -85,14 +86,23 @@ class Model(object):
 
         lr = Scheduler(v=lr, nvalues=total_timesteps, schedule=lrschedule)
 
-        def train(obs, states, rewards, masks, actions, values):
+        def train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, timesteps):
             # Here we calculate advantage A(s,a) = R + yV(s') - V(s)
             # rewards = R + yV(s')
             advs = rewards - values
             for step in range(len(obs)):
                 cur_lr = lr.value()
 
-            td_map = {train_model.X:obs, A:actions, ADV:advs, R:rewards, LR:cur_lr}
+            td_map = {
+                train_model.X: obs,
+                train_model.p_action: p_actions,
+                train_model.p_reward: p_rewards,
+                train_model.timestep: timesteps,
+                A: actions,
+                ADV: advs,
+                R: rewards,
+                LR: cur_lr
+            }
             if states is not None:
                 td_map[train_model.S] = states
                 td_map[train_model.M] = masks
@@ -102,6 +112,7 @@ class Model(object):
             )
             return policy_loss, value_loss, policy_entropy
 
+        # def reset_state():
 
         self.train = train
         self.train_model = train_model
@@ -109,6 +120,7 @@ class Model(object):
         self.step = step_model.step
         self.value = step_model.value
         self.initial_state = step_model.initial_state
+        # self.reset_internal_state = reset_state
         self.save = functools.partial(tf_util.save_variables, sess=sess)
         self.load = functools.partial(tf_util.load_variables, sess=sess)
         tf.global_variables_initializer().run(session=sess)
@@ -130,6 +142,7 @@ def learn(
     gamma=0.99,
     log_interval=100,
     load_path=None,
+    n_tasks=10,  # For deep meta-rl: learning to reinforcement learn
     **network_kwargs):
 
     '''
@@ -193,34 +206,56 @@ def learn(
     if load_path is not None:
         model.load(load_path)
 
-    # Instantiate the runner object
-    runner = Runner(env, model, nsteps=nsteps, gamma=gamma)
-
     # Calculate the batch_size
     nbatch = nenvs*nsteps
 
     # Start total timer
     tstart = time.time()
 
-    for update in range(1, total_timesteps//nbatch+1):
-        # Get mini batch of experiences
-        obs, states, rewards, masks, actions, values = runner.run()
+    zero_state = model.initial_state
 
-        policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values)
-        nseconds = time.time()-tstart
+    for task_i in range(n_tasks):
+        # 1. Reset the state of hidden state of the model.
+        #   This flag will indicate to reset while iterating over the updates.
+        reset_internal_state = True
 
-        # Calculate the fps (frame per second)
-        fps = int((update*nbatch)/nseconds)
-        if update % log_interval == 0 or update == 1:
-            # Calculates if value function is a good predicator of the returns (ev > 1)
-            # or if it's just worse than predicting nothing (ev =< 0)
-            ev = explained_variance(values, rewards)
-            logger.record_tabular("nupdates", update)
-            logger.record_tabular("total_timesteps", update*nbatch)
-            logger.record_tabular("fps", fps)
-            logger.record_tabular("policy_entropy", float(policy_entropy))
-            logger.record_tabular("value_loss", float(value_loss))
-            logger.record_tabular("explained_variance", float(ev))
-            logger.dump_tabular()
+        # 2. Reset the environment to start a new MDP
+        if hasattr(env, 'supports_metarl'):
+            env.new_task()
+
+        # Instantiate the runner object inside the for-loop, so we start from
+        # the beginning.
+        runner = Runner(env, model, nsteps=nsteps, gamma=gamma)
+
+        for update in range(1, total_timesteps//nbatch+1):
+            # Get mini batch of experiences
+            obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps = runner.run()
+
+            if reset_internal_state:  # TODO: Is it necessary???
+                states = zero_state
+
+                if np.any(states):
+                  raise RuntimeError("Error while resetting the internal state.")  
+
+                reset_internal_state = False
+
+            policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps)
+            nseconds = time.time() - tstart
+
+            # Calculate the fps (frame per second)
+            fps = int((update*nbatch)/nseconds)
+            if update % log_interval == 0 or update == 1:
+                # Calculates if value function is a good predicator of the returns (ev > 1)
+                # or if it's just worse than predicting nothing (ev =< 0)
+                ev = explained_variance(values, rewards)
+                logger.record_tabular("task", task_i)  # For Meta-A2C
+                logger.record_tabular("nupdates", update)
+                logger.record_tabular("total_timesteps", update*nbatch)
+                logger.record_tabular("fps", fps)
+                logger.record_tabular("policy_entropy", float(policy_entropy))
+                logger.record_tabular("value_loss", float(value_loss))
+                logger.record_tabular("explained_variance", float(ev))
+                logger.dump_tabular()
+
     return model
 

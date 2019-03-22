@@ -21,11 +21,13 @@ class Runner(AbstractEnvRunner):
     def run(self):
         # We initialize the lists that will contain the mb of experiences
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [],[],[],[],[]
+        mb_timesteps = []
         mb_states = self.states
         for n in range(self.nsteps):
             # Given observations, take action and value (V(s))
             # We already have self.obs because Runner superclass run self.obs[:] = env.reset() on init
-            actions, values, states, _ = self.model.step(self.obs, S=self.states, M=self.dones)
+            
+            actions, values, states, _ = self.model.step(self.obs, self.p_actions, self.p_rewards, self.timesteps, S=self.states, M=self.dones)
 
             # Append the experiences
             mb_obs.append(np.copy(self.obs))
@@ -38,10 +40,20 @@ class Runner(AbstractEnvRunner):
             self.states = states
             self.dones = dones
             self.obs = obs
+            self.p_actions = actions
+            self.p_rewards = rewards
+            self.timesteps = self.timesteps + 1
+            mb_timesteps.append(self.timesteps)
             mb_rewards.append(rewards)
+
         mb_dones.append(self.dones)
 
+        n_envs = self.obs.shape[0]
         # Batch of steps to batch of rollouts
+        mb_p_rewards = np.asarray([np.array([0]*n_envs)] + mb_rewards[:-1], dtype=np.float32).swapaxes(1, 0)
+        mb_p_actions = np.asarray([np.array([0]*n_envs)] + mb_actions[:-1], dtype=np.int32).swapaxes(1, 0)
+        mb_timesteps = np.asarray(mb_timesteps, dtype=np.float32).swapaxes(1, 0)
+        
         mb_obs = np.asarray(mb_obs, dtype=self.ob_dtype).swapaxes(1, 0).reshape(self.batch_ob_shape)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32).swapaxes(1, 0)
         mb_actions = np.asarray(mb_actions, dtype=self.model.train_model.action.dtype.name).swapaxes(1, 0)
@@ -50,10 +62,9 @@ class Runner(AbstractEnvRunner):
         mb_masks = mb_dones[:, :-1]
         mb_dones = mb_dones[:, 1:]
 
-
         if self.gamma > 0.0:
             # Discount/bootstrap off value fn
-            last_values = self.model.value(self.obs, S=self.states, M=self.dones).tolist()
+            last_values = self.model.value(self.obs, self.p_actions, self.p_rewards, self.timesteps, S=self.states, M=self.dones).tolist()
             for n, (rewards, dones, value) in enumerate(zip(mb_rewards, mb_dones, last_values)):
                 rewards = rewards.tolist()
                 dones = dones.tolist()
@@ -69,4 +80,9 @@ class Runner(AbstractEnvRunner):
         mb_rewards = mb_rewards.flatten()
         mb_values = mb_values.flatten()
         mb_masks = mb_masks.flatten()
-        return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values
+
+        mb_p_rewards = mb_p_rewards.flatten().reshape(self.batch_action_shape + [1])
+        mb_p_actions = mb_p_actions.reshape(self.batch_action_shape)
+        mb_timesteps = mb_timesteps.flatten().reshape(self.batch_action_shape + [1])
+
+        return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values, mb_p_rewards, mb_p_actions, mb_timesteps

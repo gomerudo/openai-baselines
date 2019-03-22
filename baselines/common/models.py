@@ -135,6 +135,74 @@ def lstm(nlstm=128, layer_norm=False):
     return network_fn
 
 
+@register("meta_lstm")
+def meta_lstm(nlstm=128, layer_norm=False):
+    """
+    Builds LSTM (Long-Short Term Memory) network to be used in a policy.
+    Note that the resulting function returns not only the output of the LSTM
+    (i.e. hidden state of lstm for each step in the sequence), but also a dictionary
+    with auxiliary tensors to be set as policy attributes.
+
+    Specifically,
+        S is a placeholder to feed current state (LSTM state has to be managed outside policy)
+        M is a placeholder for the mask (used to mask out observations after the end of the episode, but can be used for other purposes too)
+        initial_state is a numpy array containing initial lstm state (usually zeros)
+        state is the output LSTM state (to be fed into S at the next call)
+
+
+    An example of usage of lstm-based policy can be found here: common/tests/test_doc_examples.py/test_lstm_example
+
+    Parameters:
+    ----------
+
+    nlstm: int          LSTM hidden state size
+
+    layer_norm: bool    if True, layer-normalized version of LSTM is used
+
+    Returns:
+    -------
+
+    function that builds LSTM with a given input tensor / placeholder
+    """
+
+    def network_fn(X, p_reward, timestep, p_action, n_actions, nenv=1):
+        nbatch = X.shape[0]
+        nsteps = nbatch // nenv
+
+        X_flat = tf.layers.flatten(X)
+
+        # p_reward = tf.placeholder(shape=[None, 1], dtype=tf.float32)
+        # timestep = tf.placeholder(shape=[None, 1], dtype=tf.float32)
+
+        # p_action = tf.placeholder(shape=[None], dtype=tf.int32)
+        p_action_onehot = tf.one_hot(p_action, n_actions, dtype=tf.float32)
+
+        h = tf.concat(
+            [X_flat, p_action_onehot, p_reward, timestep],
+            1
+        )
+
+        # h = tf.layers.flatten(X)
+
+        M = tf.placeholder(tf.float32, [nbatch]) #mask (done t-1)
+        S = tf.placeholder(tf.float32, [nenv, 2*nlstm]) #states
+
+        xs = batch_to_seq(h, nenv, nsteps)
+        ms = batch_to_seq(M, nenv, nsteps)
+
+        if layer_norm:
+            h5, snew = utils.lnlstm(xs, ms, S, scope='lnlstm', nh=nlstm)
+        else:
+            h5, snew = utils.lstm(xs, ms, S, scope='lstm', nh=nlstm)
+
+        h = seq_to_batch(h5)
+        initial_state = np.zeros(S.shape.as_list(), dtype=float)
+
+        return h, {'S':S, 'M':M, 'state':snew, 'initial_state':initial_state}
+
+    return network_fn
+
+
 @register("cnn_lstm")
 def cnn_lstm(nlstm=128, layer_norm=False, **conv_kwargs):
     def network_fn(X, nenv=1):
@@ -142,6 +210,39 @@ def cnn_lstm(nlstm=128, layer_norm=False, **conv_kwargs):
         nsteps = nbatch // nenv
 
         h = nature_cnn(X, **conv_kwargs)
+
+        M = tf.placeholder(tf.float32, [nbatch]) #mask (done t-1)
+        S = tf.placeholder(tf.float32, [nenv, 2*nlstm]) #states
+
+        xs = batch_to_seq(h, nenv, nsteps)
+        ms = batch_to_seq(M, nenv, nsteps)
+
+        if layer_norm:
+            h5, snew = utils.lnlstm(xs, ms, S, scope='lnlstm', nh=nlstm)
+        else:
+            h5, snew = utils.lstm(xs, ms, S, scope='lstm', nh=nlstm)
+
+        h = seq_to_batch(h5)
+        initial_state = np.zeros(S.shape.as_list(), dtype=float)
+
+        return h, {'S':S, 'M':M, 'state':snew, 'initial_state':initial_state}
+
+    return network_fn
+
+
+@register("meta_cnn_lstm")
+def cnn_lstm(nlstm=128, layer_norm=False, **conv_kwargs):
+    def network_fn(X, p_reward, timestep, p_action, n_actions, nenv=1):
+        nbatch = X.shape[0]
+        nsteps = nbatch // nenv
+
+        X_cnn = nature_cnn(X, **conv_kwargs)
+        p_action_onehot = tf.one_hot(p_action, n_actions, dtype=tf.float32)
+
+        h = tf.concat(
+            [X_cnn, p_action_onehot, p_reward, timestep],
+            1
+        )
 
         M = tf.placeholder(tf.float32, [nbatch]) #mask (done t-1)
         S = tf.placeholder(tf.float32, [nenv, 2*nlstm]) #states
