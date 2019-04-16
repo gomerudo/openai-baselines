@@ -161,13 +161,12 @@ def build_policy(env, policy_network, value_network=None, normalize_observations
 
         encoded_x = encode_observation(ob_space, encoded_x)
 
-        # Placeholders for meta-information
-        p_reward = tf.placeholder(shape=[nbatch, 1], dtype=tf.float32, name="p_reward")
-        p_action = tf.placeholder(shape=[nbatch], dtype=tf.int32, name="p_action")
-        timestep = tf.placeholder(shape=[nbatch, 1], dtype=tf.float32, name="timestep")
-
         with tf.variable_scope('pi', reuse=tf.AUTO_REUSE):
             if network_type.startswith("meta"):
+                # Placeholders for meta-information
+                p_reward = tf.placeholder(shape=[nbatch, 1], dtype=tf.float32, name="p_reward")
+                p_action = tf.placeholder(shape=[nbatch], dtype=tf.int32, name="p_action")
+                timestep = tf.placeholder(shape=[nbatch, 1], dtype=tf.float32, name="timestep")
                 policy_latent = policy_network(encoded_x, p_reward, timestep, p_action, env.action_space.n)
             else:
                 policy_latent = policy_network(encoded_x)

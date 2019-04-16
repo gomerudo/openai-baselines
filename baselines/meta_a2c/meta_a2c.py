@@ -142,7 +142,7 @@ def learn(
     gamma=0.99,
     log_interval=100,
     load_path=None,
-    n_tasks=10,  # For deep meta-rl: learning to reinforcement learn
+    n_tasks=5,  # For deep meta-rl: learning to reinforcement learn
     **network_kwargs):
 
     '''
@@ -219,9 +219,9 @@ def learn(
         #   This flag will indicate to reset while iterating over the updates.
         reset_internal_state = True
 
-        # 2. Reset the environment to start a new MDP
-        if hasattr(env, 'supports_metarl'):
-            env.new_task()
+        # 2. Reset the environment to start a new MDP (only if supported)
+        if hasattr(env, 'next_task'):
+            env.next_task()
 
         # Instantiate the runner object inside the for-loop, so we start from
         # the beginning.
