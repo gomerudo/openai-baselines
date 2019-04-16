@@ -9,7 +9,7 @@ from baselines.common import tf_util
 from baselines.common.policies import build_policy
 
 
-from baselines.a2c.utils import Scheduler, find_trainable_variables
+from baselines.meta_a2c.utils import Scheduler, find_trainable_variables
 from baselines.meta_a2c.runner import Runner
 import numpy as np
 
@@ -200,6 +200,10 @@ def learn(
     nenvs = env.num_envs
     policy = build_policy(env, network, **network_kwargs)
 
+    logger.log("Number of environments (nenv): %d", nenvs)
+    logger.log("Number of steps (nsteps): %d", total_timesteps)
+    logger.log("Total timesteps (total_timesteps): %d", total_timesteps)
+
     # Instantiate the model object (that creates step_model and train_model)
     model = Model(policy=policy, env=env, nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef,
         max_grad_norm=max_grad_norm, lr=lr, alpha=alpha, epsilon=epsilon, total_timesteps=total_timesteps, lrschedule=lrschedule)
@@ -214,7 +218,7 @@ def learn(
 
     zero_state = model.initial_state
 
-    for task_i in range(n_tasks):
+    for task_i in range(1, n_tasks + 1):
         # 1. Reset the state of hidden state of the model.
         #   This flag will indicate to reset while iterating over the updates.
         reset_internal_state = True
@@ -254,6 +258,7 @@ def learn(
                 logger.record_tabular("fps", fps)
                 logger.record_tabular("policy_entropy", float(policy_entropy))
                 logger.record_tabular("value_loss", float(value_loss))
+                logger.record_tabular("policy_loss", float(policy_loss))
                 logger.record_tabular("explained_variance", float(ev))
                 logger.dump_tabular()
 
