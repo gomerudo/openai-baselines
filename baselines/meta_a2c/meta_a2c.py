@@ -223,8 +223,8 @@ def learn(
         # the beginning.
         runner = Runner(env, model, nsteps=nsteps, gamma=gamma)
         logger.log("Starting task", task_i)
-        for update in range(1, 3):
-        # for update in range(1, total_timesteps//nbatch+1):
+        # for update in range(1, 3):
+        for update in range(1, total_timesteps//nbatch+1):
             # Get mini batch of experiences
             obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps = runner.run()
             # print("Obs shape", obs.shape)
