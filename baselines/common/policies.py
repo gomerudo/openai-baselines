@@ -83,9 +83,12 @@ class PolicyWithValue(object):
             feed_dict.update(meta_dict)
 
         for inpt_name, data in extra_feed.items():
+            # print("Input name", inpt_name)
+            # print("Data", data)
             if inpt_name in self.__dict__.keys():
                 inpt = self.__dict__[inpt_name]
                 if isinstance(inpt, tf.Tensor) and inpt._op.type == 'Placeholder':
+                    # print("Original shape is:", data.shape)
                     feed_dict[inpt] = adjust_shape(inpt, data)
 
         return sess.run(variables, feed_dict)

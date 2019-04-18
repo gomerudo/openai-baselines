@@ -219,6 +219,11 @@ def main(args):
     if args.play:
         logger.log("Running trained model")
         obs = env.reset()
+        print("Shape for observation", obs.shape)
+        # Temporal change for meta-rl
+        p_actions = np.zeros((obs.shape[0]), dtype=np.int32)
+        p_rewards = np.zeros((obs.shape[0], 1))
+        timesteps = np.zeros((obs.shape[0], 1))
 
         state = model.initial_state if hasattr(model, 'initial_state') else None
         dones = np.zeros((1,))
@@ -226,13 +231,18 @@ def main(args):
         episode_rew = 0
         while True:
             if state is not None:
-                actions, _, state, _ = model.step(obs,S=state, M=dones)
+                actions, _, state, _ = model.step(obs, S=state, M=dones, p_action=p_actions, p_reward=p_actions, timestep=timesteps)
             else:
                 actions, _, _, _ = model.step(obs)
 
             obs, rew, done, _ = env.step(actions)
             episode_rew += rew[0] if isinstance(env, VecEnv) else rew
+            p_actions = actions
+            p_reward = rew
+            timesteps += 1
+
             env.render()
+
             done = done.any() if isinstance(done, np.ndarray) else done
             if done:
                 print('episode_rew={}'.format(episode_rew))
