@@ -212,8 +212,8 @@ def main(args):
     logger.log("Training ended")
 
     if args.save_path is not None and rank == 0:
-        logger.log("Saving trained model")
         save_path = osp.expanduser(args.save_path)
+        logger.log("Saving trained model to", save_path)
         model.save(save_path)
 
     if args.play:

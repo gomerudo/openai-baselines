@@ -143,6 +143,7 @@ def learn(
     log_interval=100,
     load_path=None,
     n_tasks=5,  # For deep meta-rl: learning to reinforcement learn
+    tmp_save_path=None,
     **network_kwargs):
 
     '''
@@ -200,48 +201,44 @@ def learn(
     nenvs = env.num_envs
     policy = build_policy(env, network, **network_kwargs)
 
-    logger.log("Number of environments (nenv): %d", nenvs)
-    logger.log("Number of steps (nsteps): %d", total_timesteps)
-    logger.log("Total timesteps (total_timesteps): %d", total_timesteps)
+    logger.log("Number of environments (nenv):", nenvs)
+    logger.log("Number of steps (nsteps):", nsteps)
+    logger.log("Total timesteps (total_timesteps):", total_timesteps)
 
     # Instantiate the model object (that creates step_model and train_model)
     model = Model(policy=policy, env=env, nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef,
         max_grad_norm=max_grad_norm, lr=lr, alpha=alpha, epsilon=epsilon, total_timesteps=total_timesteps, lrschedule=lrschedule)
     if load_path is not None:
+        logger.log("Loading model from path", load_path)
         model.load(load_path)
 
     # Calculate the batch_size
     nbatch = nenvs*nsteps
-
-    # Start total timer
-    tstart = time.time()
-
-    zero_state = model.initial_state
+    logger.log("Number of batches (nbatch):", nbatch)
 
     for task_i in range(1, n_tasks + 1):
-        # 1. Reset the state of hidden state of the model.
-        #   This flag will indicate to reset while iterating over the updates.
-        reset_internal_state = True
-
-        # 2. Reset the environment to start a new MDP (only if supported)
-        if hasattr(env, 'next_task'):
-            env.next_task()
+        tstart = time.time()
 
         # Instantiate the runner object inside the for-loop, so we start from
         # the beginning.
         runner = Runner(env, model, nsteps=nsteps, gamma=gamma)
-
-        for update in range(1, total_timesteps//nbatch+1):
+        logger.log("Starting task", task_i)
+        for update in range(1, 3):
+        # for update in range(1, total_timesteps//nbatch+1):
             # Get mini batch of experiences
             obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps = runner.run()
-
-            if reset_internal_state:  # TODO: Is it necessary???
-                states = zero_state
-
-                if np.any(states):
-                  raise RuntimeError("Error while resetting the internal state.")  
-
-                reset_internal_state = False
+            # print("Obs shape", obs.shape)
+            # print("Rewards shape", rewards.shape)
+            # print("Actions shape", actions.shape)
+            # print("Values shape", values.shape)
+            # print("P_rewards shape", p_rewards.shape)
+            # print("P_actions shape", p_actions.shape)
+            # print("P_timesteps shape", p_timesteps.shape)
+            # print("Masks shape", masks.shape)
+            # print("Initial state is empty?: ", not np.any(model.initial_state))
+            # print("States is empty?: ", not np.any(states))
+            # print("States shape is: ", states.shape)
+            # print("States are: ", states)
 
             policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps)
             nseconds = time.time() - tstart
@@ -253,6 +250,7 @@ def learn(
                 # or if it's just worse than predicting nothing (ev =< 0)
                 ev = explained_variance(values, rewards)
                 logger.record_tabular("task", task_i)  # For Meta-A2C
+                logger.record_tabular("total_time", nseconds)
                 logger.record_tabular("nupdates", update)
                 logger.record_tabular("total_timesteps", update*nbatch)
                 logger.record_tabular("fps", fps)
@@ -261,6 +259,14 @@ def learn(
                 logger.record_tabular("policy_loss", float(policy_loss))
                 logger.record_tabular("explained_variance", float(ev))
                 logger.dump_tabular()
+
+        if tmp_save_path is not None:
+            logger.log("Saving trained model to", tmp_save_path)
+            model.save(save_path)
+
+        # 2. Reset the environment to start a new MDP (only if supported)
+        if hasattr(env, 'next_task'):
+            env.next_task()
 
     return model
 

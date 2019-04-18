@@ -1,6 +1,6 @@
 import tensorflow as tf
 from baselines.common import tf_util
-from baselines.a2c.utils import fc
+from baselines.meta_a2c.utils import fc
 from baselines.common.distributions import make_pdtype
 from baselines.common.input import observation_placeholder, encode_observation
 from baselines.common.tf_util import adjust_shape
@@ -65,7 +65,7 @@ class PolicyWithValue(object):
             self.vf = self.q
         else:
             self.vf = fc(vf_latent, 'vf', 1)
-            self.vf = self.vf[:,0]
+            self.vf = self.vf[:, 0]
 
     def _evaluate(self, variables, observation, ob_pa=None, ob_pr=None, ob_t=None, **extra_feed):
         sess = self.sess

@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
-from baselines.a2c import utils
-from baselines.a2c.utils import conv, fc, conv_to_fc, batch_to_seq, seq_to_batch
+from baselines.meta_a2c import utils
+from baselines.meta_a2c.utils import conv, fc, conv_to_fc, batch_to_seq, seq_to_batch
 from baselines.common.mpi_running_mean_std import RunningMeanStd
 import tensorflow.contrib.layers as layers
 
@@ -170,11 +170,6 @@ def meta_lstm(nlstm=128, layer_norm=False):
         nsteps = nbatch // nenv
 
         X_flat = tf.layers.flatten(X)
-
-        # p_reward = tf.placeholder(shape=[None, 1], dtype=tf.float32)
-        # timestep = tf.placeholder(shape=[None, 1], dtype=tf.float32)
-
-        # p_action = tf.placeholder(shape=[None], dtype=tf.int32)
         p_action_onehot = tf.one_hot(p_action, n_actions, dtype=tf.float32)
 
         h = tf.concat(
@@ -191,9 +186,9 @@ def meta_lstm(nlstm=128, layer_norm=False):
         ms = batch_to_seq(M, nenv, nsteps)
 
         if layer_norm:
-            h5, snew = utils.lnlstm(xs, ms, S, scope='lnlstm', nh=nlstm)
+            h5, snew = utils.lnlstm(xs, ms, S, scope='meta_lnlstm', nh=nlstm)
         else:
-            h5, snew = utils.lstm(xs, ms, S, scope='lstm', nh=nlstm)
+            h5, snew = utils.lstm(xs, ms, S, scope='meta_lstm', nh=nlstm)
 
         h = seq_to_batch(h5)
         initial_state = np.zeros(S.shape.as_list(), dtype=float)
