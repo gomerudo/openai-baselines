@@ -262,7 +262,7 @@ def learn(
 
         if tmp_save_path is not None:
             logger.log("Saving trained model to", tmp_save_path)
-            model.save(save_path)
+            model.save(tmp_save_path)
 
         # 2. Reset the environment to start a new MDP (only if supported)
         if hasattr(env, 'next_task'):
