@@ -219,8 +219,6 @@ def learn(
     )
     file_writer.close()
 
-    raise RuntimeError("Error forced")
-
     # Calculate the batch_size
     nbatch = nenvs*nsteps
     logger.log("Number of batches (nbatch):", nbatch)
