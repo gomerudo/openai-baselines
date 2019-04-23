@@ -38,7 +38,7 @@ class Model(object):
         nbatch = nenvs*nsteps
 
 
-        with tf.variable_scope('a2c_model', reuse=tf.AUTO_REUSE):
+        with tf.variable_scope('meta_a2c_model', reuse=tf.AUTO_REUSE):
             # step_model is used for sampling
             step_model = policy(nenvs, 1, sess)
 
@@ -68,7 +68,7 @@ class Model(object):
 
         # Update parameters using loss
         # 1. Get the model parameters
-        params = find_trainable_variables("a2c_model")
+        params = find_trainable_variables("meta_a2c_model")
 
         # 2. Calculate the gradients
         grads = tf.gradients(loss, params)
@@ -211,6 +211,15 @@ def learn(
     if load_path is not None:
         logger.log("Loading model from path", load_path)
         model.load(load_path)
+
+    # Save the graph
+    file_writer = tf.summary.FileWriter(
+        "{root}/graph/".format(root=logger.get_dir()),
+        tf.get_default_graph()
+    )
+    file_writer.close()
+
+    raise RuntimeError("Error forced")
 
     # Calculate the batch_size
     nbatch = nenvs*nsteps

@@ -169,18 +169,17 @@ def meta_lstm(nlstm=128, layer_norm=False):
         nbatch = X.shape[0]
         nsteps = nbatch // nenv
 
-        X_flat = tf.layers.flatten(X)
-        p_action_onehot = tf.one_hot(p_action, n_actions, dtype=tf.float32)
+        X_flat = tf.layers.flatten(X, name="obs_flat")
+        p_action_onehot = tf.one_hot(p_action, n_actions, dtype=tf.float32, name="pa_onehot")
 
         h = tf.concat(
             [X_flat, p_action_onehot, p_reward, timestep],
-            1
+            1,
+            name="input_concat"
         )
 
-        # h = tf.layers.flatten(X)
-
-        M = tf.placeholder(tf.float32, [nbatch]) #mask (done t-1)
-        S = tf.placeholder(tf.float32, [nenv, 2*nlstm]) #states
+        M = tf.placeholder(tf.float32, [nbatch], name="M") #mask (done t-1)
+        S = tf.placeholder(tf.float32, [nenv, 2*nlstm], name="S") #states
 
         xs = batch_to_seq(h, nenv, nsteps)
         ms = batch_to_seq(M, nenv, nsteps)
@@ -246,9 +245,9 @@ def cnn_lstm(nlstm=128, layer_norm=False, **conv_kwargs):
         ms = batch_to_seq(M, nenv, nsteps)
 
         if layer_norm:
-            h5, snew = utils.lnlstm(xs, ms, S, scope='lnlstm', nh=nlstm)
+            h5, snew = utils.lnlstm(xs, ms, S, scope='meta_cnn_lnlstm', nh=nlstm)
         else:
-            h5, snew = utils.lstm(xs, ms, S, scope='lstm', nh=nlstm)
+            h5, snew = utils.lstm(xs, ms, S, scope='meta_cnn_lstm', nh=nlstm)
 
         h = seq_to_batch(h5)
         initial_state = np.zeros(S.shape.as_list(), dtype=float)
