@@ -1,4 +1,5 @@
 import time
+import os
 import functools
 import tensorflow as tf
 import pandas as pd
@@ -224,6 +225,12 @@ def learn(
     nbatch = nenvs*nsteps
     logger.log("Number of batches (nbatch):", nbatch)
 
+    # Make directory for episode logs
+    episode_log_dir = "{dir}/episode_logs".format(
+        dir=logger.get_dir()
+    )
+    os.makedirs(episode_log_dir, exist_ok=True)
+
     for task_i in range(1, n_tasks + 1):
         tstart = time.time()
 
@@ -244,10 +251,11 @@ def learn(
             episode_df = pd.DataFrame(columns=headers)
             episode_df = episode_df.append(list(info_dicts), ignore_index=True)
             # Save path
-            episode_log_path = "{dir}/episode_logs/{name}.csv".format(
-                dir=logger.get_dir(),
+            episode_log_path = "{dir}/{name}.csv".format(
+                dir=episode_log_dir,
                 name="task-{t}_ep-{e}".format(t=task_i, e=update)
             )
+
             episode_df.to_csv(episode_log_path, index=False)
 
             # Calculate the fps (frame per second)
