@@ -145,7 +145,7 @@ def learn(
     log_interval=100,
     load_path=None,
     n_tasks=5,  # For deep meta-rl: learning to reinforcement learn
-    tmp_save_path=None,
+    # tmp_save_path=None,
     **network_kwargs):
 
     '''
@@ -231,6 +231,12 @@ def learn(
     )
     os.makedirs(episode_log_dir, exist_ok=True)
 
+    models_save_dir = "{dir}/models".format(
+        dir=logger.get_dir()
+    )
+    os.makedirs(models_save_dir, exist_ok=True)
+
+
     for task_i in range(1, n_tasks + 1):
         tstart = time.time()
 
@@ -275,10 +281,13 @@ def learn(
                 logger.record_tabular("explained_variance", float(ev))
                 logger.dump_tabular()
 
-        episode_df
-        if tmp_save_path is not None:
-            logger.log("Saving trained model to", tmp_save_path)
-            model.save(tmp_save_path)
+        # if tmp_save_path is not None:
+        logger.log("Saving temporal training model")
+        tmp_save_path = "{dir}/meta_a2c_tmp-{n}.mdl".format(
+            dir=models_save_dir,
+            n=task_i
+        )
+        model.save(tmp_save_path)
 
         # 2. Reset the environment to start a new MDP (only if supported)
         if hasattr(env, 'next_task'):
