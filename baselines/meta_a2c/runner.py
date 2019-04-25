@@ -36,7 +36,7 @@ class Runner(AbstractEnvRunner):
             mb_dones.append(self.dones)
 
             # Take actions in env and look the results
-            obs, rewards, dones, _ = self.env.step(actions)
+            obs, rewards, dones, info_dicts = self.env.step(actions)
             self.states = states
             self.dones = dones
             self.obs = obs
@@ -85,4 +85,4 @@ class Runner(AbstractEnvRunner):
         mb_p_actions = mb_p_actions.reshape(self.batch_action_shape)
         mb_timesteps = mb_timesteps.flatten().reshape(self.batch_action_shape + [1])
 
-        return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values, mb_p_rewards, mb_p_actions, mb_timesteps
+        return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values, mb_p_rewards, mb_p_actions, mb_timesteps, info_dicts

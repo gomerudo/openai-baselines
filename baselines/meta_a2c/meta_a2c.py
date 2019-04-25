@@ -38,7 +38,7 @@ class Model(object):
         nbatch = nenvs*nsteps
 
 
-        with tf.variable_scope('meta_a2c_model', reuse=tf.AUTO_REUSE):
+        with tf.variable_scope('a2c_model', reuse=tf.AUTO_REUSE):
             # step_model is used for sampling
             step_model = policy(nenvs, 1, sess)
 
@@ -68,7 +68,7 @@ class Model(object):
 
         # Update parameters using loss
         # 1. Get the model parameters
-        params = find_trainable_variables("meta_a2c_model")
+        params = find_trainable_variables("a2c_model")
 
         # 2. Calculate the gradients
         grads = tf.gradients(loss, params)
@@ -233,19 +233,9 @@ def learn(
         # for update in range(1, 3):
         for update in range(1, total_timesteps//nbatch+1):
             # Get mini batch of experiences
-            obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps = runner.run()
-            # print("Obs shape", obs.shape)
-            # print("Rewards shape", rewards.shape)
-            # print("Actions shape", actions.shape)
-            # print("Values shape", values.shape)
-            # print("P_rewards shape", p_rewards.shape)
-            # print("P_actions shape", p_actions.shape)
-            # print("P_timesteps shape", p_timesteps.shape)
-            # print("Masks shape", masks.shape)
-            # print("Initial state is empty?: ", not np.any(model.initial_state))
-            # print("States is empty?: ", not np.any(states))
-            # print("States shape is: ", states.shape)
-            # print("States are: ", states)
+            obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps, info_dicts = runner.run()
+
+            print("Info dicts are:", info_dicts)
 
             policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps)
             nseconds = time.time() - tstart
