@@ -1,6 +1,7 @@
 import time
 import functools
 import tensorflow as tf
+import pandas as pd
 
 from baselines import logger
 
@@ -234,16 +235,24 @@ def learn(
         for update in range(1, total_timesteps//nbatch+1):
             # Get mini batch of experiences
             obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps, info_dicts = runner.run()
-
             
-
             policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps)
             nseconds = time.time() - tstart
+
+            # Make the pandas dataframe for logging of the info_dict
+            headers = info_dicts[0].keys()
+            episode_df = pd.DataFrame(columns=headers)
+            episode_df = episode_df.append(list(info_dicts), ignore_index=True)
+            # Save path
+            episode_log_path = "{dir}/episode_logs/{name}.csv".format(
+                dir=logger.get_dir(),
+                name="task-{t}_ep-{e}".format(t=task_i, e=update)
+            )
+            episode_df.to_csv(episode_log_path, index=False)
 
             # Calculate the fps (frame per second)
             fps = int((update*nbatch)/nseconds)
             if update % log_interval == 0 or update == 1:
-                print("Info dicts are:", info_dicts)
                 # Calculates if value function is a good predicator of the returns (ev > 1)
                 # or if it's just worse than predicting nothing (ev =< 0)
                 ev = explained_variance(values, rewards)
@@ -258,6 +267,7 @@ def learn(
                 logger.record_tabular("explained_variance", float(ev))
                 logger.dump_tabular()
 
+        episode_df
         if tmp_save_path is not None:
             logger.log("Saving trained model to", tmp_save_path)
             model.save(tmp_save_path)
