@@ -235,7 +235,7 @@ def learn(
             # Get mini batch of experiences
             obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps, info_dicts = runner.run()
 
-            print("Info dicts are:", info_dicts)
+            
 
             policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps)
             nseconds = time.time() - tstart
@@ -243,6 +243,7 @@ def learn(
             # Calculate the fps (frame per second)
             fps = int((update*nbatch)/nseconds)
             if update % log_interval == 0 or update == 1:
+                print("Info dicts are:", info_dicts)
                 # Calculates if value function is a good predicator of the returns (ev > 1)
                 # or if it's just worse than predicting nothing (ev =< 0)
                 ev = explained_variance(values, rewards)
