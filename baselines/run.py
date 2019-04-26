@@ -2,6 +2,12 @@ import sys
 import multiprocessing
 import os.path as osp
 import gym
+
+try:
+    import nasgym
+except ImportError:
+    pass
+
 from collections import defaultdict
 import tensorflow as tf
 import numpy as np
