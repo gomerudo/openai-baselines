@@ -22,12 +22,20 @@ class Runner(AbstractEnvRunner):
         # We initialize the lists that will contain the mb of experiences
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [],[],[],[],[]
         mb_timesteps = []
+        mb_infodicts = []
         mb_states = self.states
         for n in range(self.nsteps):
             # Given observations, take action and value (V(s))
             # We already have self.obs because Runner superclass run self.obs[:] = env.reset() on init
             
-            actions, values, states, _ = self.model.step(self.obs, self.p_actions, self.p_rewards, self.timesteps, S=self.states, M=self.dones)
+            actions, values, states, _ = self.model.step(
+                self.obs,
+                self.p_actions,
+                self.p_rewards,
+                self.timesteps,
+                S=self.states,
+                M=self.dones
+            )
 
             # Append the experiences
             mb_obs.append(np.copy(self.obs))
@@ -36,7 +44,13 @@ class Runner(AbstractEnvRunner):
             mb_dones.append(self.dones)
 
             # Take actions in env and look the results
+            # print("Actions to execute:", actions)
             obs, rewards, dones, info_dicts = self.env.step(actions)
+            # print("Obs shape", obs.shape)
+            # print("Rewards shape", rewards.shape)
+            # print("Info dicts", info_dicts)
+            # print(rewards)
+            mb_infodicts.extend(list(info_dicts))
             self.states = states
             self.dones = dones
             self.obs = obs
@@ -85,4 +99,4 @@ class Runner(AbstractEnvRunner):
         mb_p_actions = mb_p_actions.reshape(self.batch_action_shape)
         mb_timesteps = mb_timesteps.flatten().reshape(self.batch_action_shape + [1])
 
-        return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values, mb_p_rewards, mb_p_actions, mb_timesteps, info_dicts
+        return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values, mb_p_rewards, mb_p_actions, mb_timesteps, mb_infodicts

@@ -237,7 +237,14 @@ def main(args):
         episode_rew = 0
         while True:
             if state is not None:
-                actions, _, state, _ = model.step(obs, S=state, M=dones, p_action=p_actions, p_reward=p_actions, timestep=timesteps)
+                actions, _, state, _ = model.step(
+                    obs,
+                    S=state,
+                    M=dones,
+                    p_action=p_actions,
+                    p_reward=p_rewards,
+                    timestep=timesteps
+                )
             else:
                 actions, _, _, _ = model.step(obs)
 

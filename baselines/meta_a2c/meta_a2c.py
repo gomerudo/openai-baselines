@@ -208,8 +208,20 @@ def learn(
     logger.log("Total timesteps (total_timesteps):", total_timesteps)
 
     # Instantiate the model object (that creates step_model and train_model)
-    model = Model(policy=policy, env=env, nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef,
-        max_grad_norm=max_grad_norm, lr=lr, alpha=alpha, epsilon=epsilon, total_timesteps=total_timesteps, lrschedule=lrschedule)
+    model = Model(
+        policy=policy,
+        env=env,
+        nsteps=nsteps,
+        ent_coef=ent_coef,
+        vf_coef=vf_coef,
+        max_grad_norm=max_grad_norm,
+        lr=lr,
+        alpha=alpha,
+        epsilon=epsilon,
+        total_timesteps=total_timesteps,
+        lrschedule=lrschedule
+    )
+
     if load_path is not None:
         logger.log("Loading model from path", load_path)
         model.load(load_path)
@@ -235,8 +247,7 @@ def learn(
         dir=logger.get_dir()
     )
     os.makedirs(models_save_dir, exist_ok=True)
-
-
+    
     for task_i in range(1, n_tasks + 1):
         tstart = time.time()
 
@@ -248,7 +259,7 @@ def learn(
         for update in range(1, total_timesteps//nbatch+1):
             # Get mini batch of experiences
             obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps, info_dicts = runner.run()
-            
+
             policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps)
             nseconds = time.time() - tstart
 
