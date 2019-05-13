@@ -1,5 +1,6 @@
 import time
 import os
+import glob
 import functools
 import tensorflow as tf
 import pandas as pd
@@ -243,6 +244,8 @@ def learn(
     )
     os.makedirs(episode_log_dir, exist_ok=True)
 
+    n_stored_episodes = len(glob.glob("{dir}/*".format(dir=episode_log_dir)))
+
     models_save_dir = "{dir}/models".format(
         dir=logger.get_dir()
     )
@@ -256,7 +259,7 @@ def learn(
         runner = Runner(env, model, nsteps=nsteps, gamma=gamma)
         logger.log("Starting task", task_i)
         # for update in range(1, 3):
-        for update in range(1, total_timesteps//nbatch+1):
+        for update in range(1, total_timesteps//nbatch + 1):
             # Get mini batch of experiences
             obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps, info_dicts = runner.run()
 
@@ -270,7 +273,10 @@ def learn(
             # Save path
             episode_log_path = "{dir}/{name}.csv".format(
                 dir=episode_log_dir,
-                name="task-{t}_ep-{e}".format(t=task_i, e=update)
+                name="task-{t}_ep-{e}".format(
+                    t=task_i,
+                    e=update + n_stored_episodes
+                )
             )
 
             episode_df.to_csv(episode_log_path, index=False)
@@ -292,13 +298,13 @@ def learn(
                 logger.record_tabular("explained_variance", float(ev))
                 logger.dump_tabular()
 
-        # if tmp_save_path is not None:
-        logger.log("Saving temporal training model")
-        tmp_save_path = "{dir}/meta_a2c_tmp-{n}.mdl".format(
-            dir=models_save_dir,
-            n=task_i
-        )
-        model.save(tmp_save_path)
+            # if tmp_save_path is not None:
+            logger.log("Saving temporal training model")
+            tmp_save_path = "{dir}/meta_a2c_tmp-{n}.mdl".format(
+                dir=models_save_dir,
+                n=task_i
+            )
+            model.save(tmp_save_path)
 
         # 2. Reset the environment to start a new MDP (only if supported)
         if hasattr(env, 'next_task'):
