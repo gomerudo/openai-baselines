@@ -5,8 +5,8 @@ import gym
 
 try:
     import nasgym
-except ImportError:
-    pass
+except ImportError as ex:
+    raise ex
 
 from collections import defaultdict
 import tensorflow as tf
