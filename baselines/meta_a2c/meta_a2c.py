@@ -310,5 +310,9 @@ def learn(
         if hasattr(env, 'next_task'):
             env.next_task()
 
+        if hasattr(env, 'save_db_experiments'):
+            logger.log("Saving databse of experiments of the environment")
+            env.save_db_experiments()
+
     return model
 
