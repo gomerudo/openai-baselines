@@ -279,7 +279,9 @@ def learn(
                 )
             )
 
-            episode_df.to_csv(episode_log_path, index=False)
+            outfile = open(episode_log_path, 'w')
+            episode_df.to_csv(outfile, index=False)
+            outfile.close()
 
             # Calculate the fps (frame per second)
             fps = int((update*nbatch)/nseconds)
