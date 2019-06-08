@@ -251,6 +251,7 @@ def learn(
     )
     os.makedirs(models_save_dir, exist_ok=True)
     
+    episode_df = None
     for task_i in range(1, n_tasks + 1):
         tstart = time.time()
 
@@ -267,21 +268,13 @@ def learn(
             nseconds = time.time() - tstart
 
             # Make the pandas dataframe for logging of the info_dict
-            headers = info_dicts[0].keys()
-            episode_df = pd.DataFrame(columns=headers)
-            episode_df = episode_df.append(list(info_dicts), ignore_index=True)
-            # Save path
-            episode_log_path = "{dir}/{name}.csv".format(
-                dir=episode_log_dir,
-                name="task-{t}_ep-{e}".format(
-                    t=task_i,
-                    e=update + n_stored_episodes
+            if episode_df is None:
+                headers = info_dicts[0].keys()
+                episode_df = pd.DataFrame(columns=headers)
+            else:
+                episode_df = episode_df.append(
+                    list(info_dicts), ignore_index=True
                 )
-            )
-
-            outfile = open(episode_log_path, 'w')
-            episode_df.to_csv(outfile, index=False)
-            outfile.close()
 
             # Calculate the fps (frame per second)
             fps = int((update*nbatch)/nseconds)
@@ -301,16 +294,30 @@ def learn(
                 logger.dump_tabular()
 
             # if tmp_save_path is not None:
-            logger.log("Saving temporal training model")
-            tmp_save_path = "{dir}/meta_a2c_tmp-{n}.mdl".format(
-                dir=models_save_dir,
-                n=task_i
-            )
-            model.save(tmp_save_path)
+            # logger.log("Saving temporal training model")
+            # tmp_save_path = "{dir}/meta_a2c_tmp-{n}.mdl".format(
+            #     dir=models_save_dir,
+            #     n=task_i
+            # )
+            # model.save(tmp_save_path)
 
-        # 2. Reset the environment to start a new MDP (only if supported)
-        if hasattr(env, 'next_task'):
-            env.next_task()
+        # Save path
+        episode_log_path = "{dir}/{name}.csv".format(
+            dir=episode_log_dir,
+            name="episodes_results"
+            # name="task-{t}_ep-{e}".format(
+            #     t=task_i,
+            #     e=update + n_stored_episodes
+            # )
+        )
+
+        outfile = open(episode_log_path, 'w')
+        episode_df.to_csv(outfile)
+        outfile.close()
+
+        # # 2. Reset the environment to start a new MDP (only if supported)
+        # if hasattr(env, 'next_task'):
+        #     env.next_task()
 
         if hasattr(env, 'save_db_experiments'):
             logger.log("Saving databse of experiments of the environment")
