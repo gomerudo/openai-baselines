@@ -196,7 +196,12 @@ def learn(
 
     '''
 
-
+    # Do to avoid Too many files open exception.
+    import resource
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    logger.log("RM Soft limix was:", soft)
+    logger.log("RM will set to:", hard)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
 
     set_global_seeds(seed)
 
