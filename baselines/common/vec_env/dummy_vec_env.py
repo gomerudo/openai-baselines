@@ -61,6 +61,10 @@ class DummyVecEnv(VecEnv):
             self._save_obs(e, obs)
         return self._obs_from_buf()
 
+    def save_db_experiments(self):
+        for e in range(self.num_envs):
+            self.envs[e].save_db_experiments()
+
     def _save_obs(self, e, obs):
         for k in self.keys:
             if k is None:
