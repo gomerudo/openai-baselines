@@ -259,10 +259,6 @@ def learn(
     episode_df = None
     for task_i in range(1, n_tasks + 1):
         tstart = time.time()
-
-        # Initialize the datafreme for the trial episodes
-        headers = info_dicts[0].keys()
-        episode_df = pd.DataFrame(columns=headers)
         
         # Instantiate the runner object inside the for-loop, so we start from
         # the beginning.
@@ -274,6 +270,10 @@ def learn(
             obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps, info_dicts = runner.run()
             policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps)
             nseconds = time.time() - tstart
+
+            if episode_df is None:
+                headers = info_dicts[0].keys()
+                episode_df = pd.DataFrame(columns=headers)
 
             episode_df = episode_df.append(
                 info_dicts, ignore_index=True
