@@ -249,17 +249,21 @@ def learn(
     )
     os.makedirs(episode_log_dir, exist_ok=True)
 
-    n_stored_episodes = len(glob.glob("{dir}/*".format(dir=episode_log_dir)))
-
+    # Make directory for models
     models_save_dir = "{dir}/models".format(
         dir=logger.get_dir()
     )
     os.makedirs(models_save_dir, exist_ok=True)
-    
+
+    # Initialize the episde_df
     episode_df = None
     for task_i in range(1, n_tasks + 1):
         tstart = time.time()
 
+        # Initialize the datafreme for the trial episodes
+        headers = info_dicts[0].keys()
+        episode_df = pd.DataFrame(columns=headers)
+        
         # Instantiate the runner object inside the for-loop, so we start from
         # the beginning.
         runner = Runner(env, model, nsteps=nsteps, gamma=gamma)
@@ -268,18 +272,12 @@ def learn(
         for update in range(1, total_timesteps//nbatch + 1):
             # Get mini batch of experiences
             obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps, info_dicts = runner.run()
-
             policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps)
             nseconds = time.time() - tstart
 
-            # Make the pandas dataframe for logging of the info_dict
-            if episode_df is None:
-                headers = info_dicts[0].keys()
-                episode_df = pd.DataFrame(columns=headers)
-            else:
-                episode_df = episode_df.append(
-                    list(info_dicts), ignore_index=True
-                )
+            episode_df = episode_df.append(
+                info_dicts, ignore_index=True
+            )
 
             # Calculate the fps (frame per second)
             fps = int((update*nbatch)/nseconds)
@@ -298,33 +296,17 @@ def learn(
                 logger.record_tabular("explained_variance", float(ev))
                 logger.dump_tabular()
 
-            # if tmp_save_path is not None:
-            # logger.log("Saving temporal training model")
-            # tmp_save_path = "{dir}/meta_a2c_tmp-{n}.mdl".format(
-            #     dir=models_save_dir,
-            #     n=task_i
-            # )
-            # model.save(tmp_save_path)
-
-        # Save path
+        # Save trial log
         episode_log_path = "{dir}/{name}.csv".format(
             dir=episode_log_dir,
             name="episodes_results"
-            # name="task-{t}_ep-{e}".format(
-            #     t=task_i,
-            #     e=update + n_stored_episodes
-            # )
         )
 
         outfile = open(episode_log_path, 'w')
         episode_df.to_csv(outfile)
         outfile.close()
 
-        # # 2. Reset the environment to start a new MDP (only if supported)
-        # if hasattr(env, 'next_task'):
-        #     env.next_task()
-
-        # if hasattr(env, 'save_db_experiments'):
+        # Save the db of experiments
         logger.log("Saving databse of experiments of the environment")
         env.save_db_experiments()
 

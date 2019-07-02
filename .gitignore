@@ -37,5 +37,6 @@ MUJOCO_LOG.TXT
 
 # Custom (gomerudo)
 .vscode/**
-workspace/**
+workspace*/**
+resources/**
 nas-env/**
