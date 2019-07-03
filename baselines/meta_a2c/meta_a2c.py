@@ -41,7 +41,7 @@ class Model(object):
         nbatch = nenvs*nsteps
 
 
-        with tf.variable_scope('a2c_model', reuse=tf.AUTO_REUSE):
+        with tf.variable_scope('meta-a2c_model', reuse=tf.AUTO_REUSE):
             # step_model is used for sampling
             step_model = policy(nenvs, 1, sess)
 
@@ -71,7 +71,7 @@ class Model(object):
 
         # Update parameters using loss
         # 1. Get the model parameters
-        params = find_trainable_variables("a2c_model")
+        params = find_trainable_variables("meta-a2c_model")
 
         # 2. Calculate the gradients
         grads = tf.gradients(loss, params)
