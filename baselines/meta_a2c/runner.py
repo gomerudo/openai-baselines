@@ -1,6 +1,7 @@
 import numpy as np
 from baselines.meta_a2c.utils import discount_with_dones
 from baselines.common.runners import AbstractEnvRunner
+from baselines import logger
 
 class Runner(AbstractEnvRunner):
     """
@@ -62,11 +63,8 @@ class Runner(AbstractEnvRunner):
 
         mb_dones.append(self.dones)
 
-        n_envs = self.obs.shape[0]
         # Batch of steps to batch of rollouts
-        mb_p_rewards = np.asarray([np.array([0]*n_envs)] + mb_rewards[:-1], dtype=np.float32).swapaxes(1, 0)
-        mb_p_actions = np.asarray([np.array([0]*n_envs)] + mb_actions[:-1], dtype=np.int32).swapaxes(1, 0)
-        mb_timesteps = np.asarray(mb_timesteps, dtype=np.float32).swapaxes(1, 0)
+        mb_timesteps = np.asarray(mb_timesteps, dtype=np.int32).swapaxes(1, 0)
         
         mb_obs = np.asarray(mb_obs, dtype=self.ob_dtype).swapaxes(1, 0).reshape(self.batch_ob_shape)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32).swapaxes(1, 0)
@@ -90,13 +88,14 @@ class Runner(AbstractEnvRunner):
                 mb_rewards[n] = rewards
 
         mb_actions = mb_actions.reshape(self.batch_action_shape)
+        # print("Shape 2", mb_actions.shape)
 
         mb_rewards = mb_rewards.flatten()
         mb_values = mb_values.flatten()
         mb_masks = mb_masks.flatten()
 
-        mb_p_rewards = mb_p_rewards.flatten().reshape(self.batch_action_shape + [1])
-        mb_p_actions = mb_p_actions.reshape(self.batch_action_shape)
+        # mb_p_rewards = mb_p_rewards.flatten().reshape(self.batch_action_shape + [1])
+        # mb_p_actions = mb_p_actions.reshape(self.batch_action_shape)
         mb_timesteps = mb_timesteps.flatten().reshape(self.batch_action_shape + [1])
 
-        return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values, mb_p_rewards, mb_p_actions, mb_timesteps, mb_infodicts
+        return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values, mb_timesteps, mb_infodicts

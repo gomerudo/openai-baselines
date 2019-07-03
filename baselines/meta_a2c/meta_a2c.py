@@ -201,7 +201,7 @@ def learn(
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
     logger.log("RM Soft limix was:", soft)
     logger.log("RM will set to:", hard)
-    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+    # resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
 
     set_global_seeds(seed)
 
@@ -264,11 +264,24 @@ def learn(
         # the beginning.
         runner = Runner(env, model, nsteps=nsteps, gamma=gamma)
         logger.log("Starting task", task_i)
+        prev_actions = np.zeros(nbatch, dtype=np.int)
+        prev_rewards = np.zeros(nbatch, dtype=np.int)
+
         # for update in range(1, 3):
         for update in range(1, total_timesteps//nbatch + 1):
             # Get mini batch of experiences
-            obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps, info_dicts = runner.run()
-            policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, p_timesteps)
+            obs, states, rewards, masks, actions, values, timesteps, info_dicts = runner.run()
+
+            # Build the prev actions
+            p_actions = np.append(prev_actions[-nenvs:], actions[:-nenvs])
+            prev_actions = actions
+
+            # Build the prev rewards
+            p_rewards = np.append(prev_rewards[-nenvs:], rewards[:-nenvs])
+            p_rewards = p_rewards.reshape((nbatch, 1))
+            prev_rewards = rewards
+
+            policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, timesteps)
             nseconds = time.time() - tstart
 
             if episode_df is None:
