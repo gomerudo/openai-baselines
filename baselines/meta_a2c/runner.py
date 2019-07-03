@@ -45,12 +45,8 @@ class Runner(AbstractEnvRunner):
             mb_dones.append(self.dones)
 
             # Take actions in env and look the results
-            # print("Actions to execute:", actions)
             obs, rewards, dones, info_dicts = self.env.step(actions)
-            # print("Obs shape", obs.shape)
-            # print("Rewards shape", rewards.shape)
-            # print("Info dicts", info_dicts)
-            # print(rewards)
+
             mb_infodicts.extend(list(info_dicts))
             self.states = states
             self.dones = dones
@@ -65,7 +61,7 @@ class Runner(AbstractEnvRunner):
 
         # Batch of steps to batch of rollouts
         mb_timesteps = np.asarray(mb_timesteps, dtype=np.int32).swapaxes(1, 0)
-        
+
         mb_obs = np.asarray(mb_obs, dtype=self.ob_dtype).swapaxes(1, 0).reshape(self.batch_ob_shape)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32).swapaxes(1, 0)
         mb_actions = np.asarray(mb_actions, dtype=self.model.train_model.action.dtype.name).swapaxes(1, 0)
@@ -88,14 +84,11 @@ class Runner(AbstractEnvRunner):
                 mb_rewards[n] = rewards
 
         mb_actions = mb_actions.reshape(self.batch_action_shape)
-        # print("Shape 2", mb_actions.shape)
 
         mb_rewards = mb_rewards.flatten()
         mb_values = mb_values.flatten()
         mb_masks = mb_masks.flatten()
 
-        # mb_p_rewards = mb_p_rewards.flatten().reshape(self.batch_action_shape + [1])
-        # mb_p_actions = mb_p_actions.reshape(self.batch_action_shape)
         mb_timesteps = mb_timesteps.flatten().reshape(self.batch_action_shape + [1])
 
         return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values, mb_timesteps, mb_infodicts
