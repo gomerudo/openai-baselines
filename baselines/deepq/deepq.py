@@ -262,6 +262,13 @@ def learn(env,
             dir=logger.get_dir()
         )
         os.makedirs(episode_log_dir, exist_ok=True)
+
+        # Save trial log
+        episode_log_path = "{dir}/{name}.csv".format(
+            dir=episode_log_dir,
+            name="episodes_results"
+        )
+
         episode_df = None
 
         for t in range(total_timesteps):
@@ -342,12 +349,6 @@ def learn(env,
                     model_saved = True
                     saved_mean_reward = mean_100ep_reward
                     
-                    # Save trial log
-                    episode_log_path = "{dir}/{name}.csv".format(
-                        dir=episode_log_dir,
-                        name="episodes_results"
-                    )
-
                     outfile = open(episode_log_path, 'a')
                     logger.log("Saving episode logs")
                     episode_df.to_csv(outfile)
@@ -357,6 +358,12 @@ def learn(env,
                     if hasattr(env, 'save_db_experiments'):
                         logger.log("Saving database of experiments")
                         env.save_db_experiments()
+
+        if episode_df is not None:
+            outfile = open(episode_log_path, 'a')
+            logger.log("Saving episode logs")
+            episode_df.to_csv(outfile)
+            outfile.close()
 
         if model_saved:
             if print_freq is not None:
