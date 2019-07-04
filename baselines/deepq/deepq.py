@@ -261,7 +261,8 @@ def learn(env,
             dir=logger.get_dir()
         )
         os.makedirs(episode_log_dir, exist_ok=True)
-
+        episode_df = None
+        
         for t in range(total_timesteps):
             if callback is not None:
                 if callback(locals(), globals()):
