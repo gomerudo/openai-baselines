@@ -5,6 +5,7 @@ import tensorflow as tf
 import zipfile
 import cloudpickle
 import numpy as np
+import pandas as pd
 
 import baselines.common.tf_util as U
 from baselines.common.tf_util import load_variables, save_variables
@@ -262,7 +263,7 @@ def learn(env,
         )
         os.makedirs(episode_log_dir, exist_ok=True)
         episode_df = None
-        
+
         for t in range(total_timesteps):
             if callback is not None:
                 if callback(locals(), globals()):
