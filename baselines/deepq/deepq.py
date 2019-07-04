@@ -256,6 +256,11 @@ def learn(env,
             load_variables(load_path)
             logger.log('Loaded model from {}'.format(load_path))
 
+        # Make directory for episode logs
+        episode_log_dir = "{dir}/episode_logs".format(
+            dir=logger.get_dir()
+        )
+        os.makedirs(episode_log_dir, exist_ok=True)
 
         for t in range(total_timesteps):
             if callback is not None:
@@ -279,7 +284,16 @@ def learn(env,
             action = act(np.array(obs)[None], update_eps=update_eps, **kwargs)[0]
             env_action = action
             reset = False
-            new_obs, rew, done, _ = env.step(env_action)
+            new_obs, rew, done, info_dict = env.step(env_action)
+
+            if episode_df is None:
+                headers = info_dict.keys()
+                episode_df = pd.DataFrame(columns=headers)
+
+            episode_df = episode_df.append(
+                info_dict, ignore_index=True
+            )
+
             # Store transition in the replay buffer.
             replay_buffer.add(obs, action, rew, new_obs, float(done))
             obs = new_obs
@@ -325,6 +339,23 @@ def learn(env,
                     save_variables(model_file)
                     model_saved = True
                     saved_mean_reward = mean_100ep_reward
+                    
+                    # Save trial log
+                    episode_log_path = "{dir}/{name}.csv".format(
+                        dir=episode_log_dir,
+                        name="episodes_results"
+                    )
+
+                    outfile = open(episode_log_path, 'a')
+                    logger.log("Saving episode logs")
+                    episode_df.to_csv(outfile)
+                    outfile.close()
+                    episode_df = None
+
+                    if hasattr(env, 'save_db_experiments'):
+                        logger.log("Saving database of experiments")
+                        env.save_db_experiments()
+
         if model_saved:
             if print_freq is not None:
                 logger.log("Restored model with mean reward: {}".format(saved_mean_reward))
