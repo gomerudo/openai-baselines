@@ -54,6 +54,7 @@ class Runner(AbstractEnvRunner):
             self.p_actions = actions
             self.p_rewards = rewards
             self.timesteps = self.timesteps + 1
+            self.timesteps = np.logical_not(self.dones).reshape((self.nenv, 1))*self.timesteps
             mb_timesteps.append(self.timesteps)
             mb_rewards.append(rewards)
 
