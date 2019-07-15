@@ -296,7 +296,7 @@ def learn(env,
             new_obs, rew, done, info_dict = env.step(env_action)
 
             if episode_df is None:
-                headers = info_dict.keys()
+                headers = info_dict[0].keys()
                 episode_df = pd.DataFrame(columns=headers)
 
             episode_df = episode_df.append(
