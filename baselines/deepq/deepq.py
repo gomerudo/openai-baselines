@@ -348,22 +348,27 @@ def learn(env,
                     save_variables(model_file)
                     model_saved = True
                     saved_mean_reward = mean_100ep_reward
-                    
+                # Save the episode logs
+                if episode_df is not None:
                     outfile = open(episode_log_path, 'a')
                     logger.log("Saving episode logs")
                     episode_df.to_csv(outfile)
                     outfile.close()
                     episode_df = None
-
-                    if hasattr(env, 'save_db_experiments'):
-                        logger.log("Saving database of experiments")
-                        env.save_db_experiments()
+                # Save the DB of experiments
+                if hasattr(env, 'save_db_experiments'):
+                    logger.log("Saving database of experiments")
+                    env.save_db_experiments()
 
         if episode_df is not None:
             outfile = open(episode_log_path, 'a')
             logger.log("Saving episode logs")
             episode_df.to_csv(outfile)
             outfile.close()
+        # Save the DB of experiments
+        if hasattr(env, 'save_db_experiments'):
+            logger.log("Saving database of experiments")
+            env.save_db_experiments()
 
         if model_saved:
             if print_freq is not None:
