@@ -35,7 +35,7 @@ class Model(object):
     def __init__(self, policy, env, nsteps,
             ent_coef=0.01, vf_coef=0.5, max_grad_norm=0.5, lr=7e-4,
             alpha=0.99, epsilon=1e-5, total_timesteps=int(80e6), lrschedule='linear',
-            exp_timesteps=int(80e6)):
+            exp_timesteps=int(80e6), lrschedule_offset=0):
 
         sess = tf_util.get_session()
         nenvs = env.num_envs
@@ -88,7 +88,7 @@ class Model(object):
 
         _train = trainer.apply_gradients(grads)
 
-        lr = Scheduler(v=lr, nvalues=exp_timesteps, schedule=lrschedule)
+        lr = Scheduler(v=lr, nvalues=exp_timesteps, schedule=lrschedule, offset=lrschedule_offset)
 
         def train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, timesteps):
             # Here we calculate advantage A(s,a) = R + yV(s') - V(s)
@@ -148,6 +148,7 @@ def learn(
     load_path=None,
     n_tasks=5,  # For deep meta-rl: learning to reinforcement learn
     exp_timesteps=None,
+    lrschedule_offset=0,
     # tmp_save_path=None,
     **network_kwargs):
 
@@ -230,7 +231,8 @@ def learn(
         epsilon=epsilon,
         total_timesteps=total_timesteps,
         lrschedule=lrschedule,
-        exp_timesteps=exp_timesteps
+        exp_timesteps=exp_timesteps,
+        lrschedule_offset=lrschedule_offset
     )
 
     if load_path is not None:
