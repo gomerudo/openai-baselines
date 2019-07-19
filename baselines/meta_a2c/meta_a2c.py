@@ -34,7 +34,8 @@ class Model(object):
     """
     def __init__(self, policy, env, nsteps,
             ent_coef=0.01, vf_coef=0.5, max_grad_norm=0.5, lr=7e-4,
-            alpha=0.99, epsilon=1e-5, total_timesteps=int(80e6), lrschedule='linear'):
+            alpha=0.99, epsilon=1e-5, total_timesteps=int(80e6), lrschedule='linear',
+            exp_timesteps=int(80e6)):
 
         sess = tf_util.get_session()
         nenvs = env.num_envs
@@ -87,7 +88,7 @@ class Model(object):
 
         _train = trainer.apply_gradients(grads)
 
-        lr = Scheduler(v=lr, nvalues=total_timesteps, schedule=lrschedule)
+        lr = Scheduler(v=lr, nvalues=exp_timesteps, schedule=lrschedule)
 
         def train(obs, states, rewards, masks, actions, values, p_rewards, p_actions, timesteps):
             # Here we calculate advantage A(s,a) = R + yV(s') - V(s)
@@ -146,6 +147,7 @@ def learn(
     log_interval=100,
     load_path=None,
     n_tasks=5,  # For deep meta-rl: learning to reinforcement learn
+    exp_timesteps=None,
     # tmp_save_path=None,
     **network_kwargs):
 
@@ -214,6 +216,8 @@ def learn(
     logger.log("Total timesteps (total_timesteps):", total_timesteps)
 
     # Instantiate the model object (that creates step_model and train_model)
+    if exp_timesteps is None:
+        exp_timesteps = total_timesteps
     model = Model(
         policy=policy,
         env=env,
@@ -225,7 +229,8 @@ def learn(
         alpha=alpha,
         epsilon=epsilon,
         total_timesteps=total_timesteps,
-        lrschedule=lrschedule
+        lrschedule=lrschedule,
+        exp_timesteps=exp_timesteps
     )
 
     if load_path is not None:
@@ -309,15 +314,29 @@ def learn(
                 logger.record_tabular("explained_variance", float(ev))
                 logger.dump_tabular()
 
-        # Save trial log
-        episode_log_path = "{dir}/{name}.csv".format(
-            dir=episode_log_dir,
-            name="episodes_results"
-        )
+                # Save trial log
+                episode_log_path = "{dir}/{name}.csv".format(
+                    dir=episode_log_dir,
+                    name="episodes_results"
+                )
 
-        outfile = open(episode_log_path, 'w')
-        episode_df.to_csv(outfile)
-        outfile.close()
+                outfile = open(episode_log_path, 'w')
+                episode_df.to_csv(outfile)
+                outfile.close()
+
+                # Save the db of experiments
+                logger.log("Saving databse of experiments of the environment")
+                env.save_db_experiments()
+
+            # Save trial log
+            episode_log_path = "{dir}/{name}.csv".format(
+                dir=episode_log_dir,
+                name="episodes_results"
+            )
+
+            outfile = open(episode_log_path, 'w')
+            episode_df.to_csv(outfile)
+            outfile.close()
 
         # Save the db of experiments
         logger.log("Saving databse of experiments of the environment")

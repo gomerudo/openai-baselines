@@ -196,8 +196,8 @@ schedules = {
 
 class Scheduler(object):
 
-    def __init__(self, v, nvalues, schedule):
-        self.n = 0.
+    def __init__(self, v, nvalues, schedule, offset=0):
+        self.n = 0. + offset
         self.v = v
         self.nvalues = nvalues
         self.schedule = schedules[schedule]
