@@ -204,7 +204,7 @@ def learn(
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
     logger.log("RM Soft limix was:", soft)
     logger.log("RM will set to:", hard)
-    # resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
 
     set_global_seeds(seed)
 
@@ -327,7 +327,7 @@ def learn(
                 outfile.close()
 
                 # Save the db of experiments
-                logger.log("Saving databse of experiments of the environment")
+                logger.log("Saving database of experiments of the environment")
                 env.save_db_experiments()
 
             # Save trial log
