@@ -186,6 +186,13 @@ def learn(env,
         Wrapper over act function. Adds ability to save it and load it.
         See header of baselines/deepq/categorical.py for details on the act function.
     """
+
+    import resource
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    logger.log("RM Soft limix was:", soft)
+    logger.log("RM will set to:", hard)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+
     # Create all the functions necessary to train the model
 
     sess = get_session()
