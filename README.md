@@ -12,3 +12,7 @@ In the paper, a *deep meta-reinforcement learning* algorithm is implemented usin
 
 We hope that this code can be generalized to different environments that
 implement the OpenAI Gym Environment interface too.
+
+## Usage and changes
+
+You can run the meta-A2C as any other baselines, more information [here](baselines/meta_a2c).
