@@ -1,6 +1,7 @@
 import sys
 import multiprocessing
 import os.path as osp
+import os
 import gym
 
 try:
@@ -11,7 +12,7 @@ except ImportError as ex:
 from collections import defaultdict
 import tensorflow as tf
 import numpy as np
-
+import pandas as pd
 from baselines.common.vec_env import VecFrameStack, VecNormalize, VecEnv
 from baselines.common.vec_env.vec_video_recorder import VecVideoRecorder
 from baselines.common.cmd_util import common_arg_parser, parse_unknown_args, make_vec_env, make_env
@@ -213,9 +214,11 @@ def main(args):
         logger.configure(format_strs=[])
         rank = MPI.COMM_WORLD.Get_rank()
 
-    logger.log("Starting training")
-    model, env = train(args, extra_args)
-    logger.log("Training ended")
+    # Change to avoid training when playing
+    if not args.play:
+        logger.log("Starting training")
+        model, env = train(args, extra_args)
+        logger.log("Training ended")
 
     if args.save_path is not None and rank == 0:
         save_path = osp.expanduser(args.save_path)
@@ -223,9 +226,20 @@ def main(args):
         model.save(save_path)
 
     if args.play:
+        # Make directory for episode logs
+        episode_log_dir = "{dir}/play_logs".format(
+            dir=logger.get_dir()
+        )
+        os.makedirs(episode_log_dir, exist_ok=True)
+        episode_log_path = "{dir}/{name}.csv".format(
+            dir=episode_log_dir,
+            name="episode_results"
+        )
+        episode_df = None
+
         logger.log("Running trained model")
         obs = env.reset()
-        print("Shape for observation", obs.shape)
+
         # Temporal change for meta-rl
         p_actions = np.zeros((obs.shape[0]), dtype=np.int32)
         p_rewards = np.zeros((obs.shape[0], 1))
@@ -234,8 +248,10 @@ def main(args):
         state = model.initial_state if hasattr(model, 'initial_state') else None
         dones = np.zeros((1,))
 
+        # Control the number of time-steps allowed for the playing
+        play_count = 0
         episode_rew = 0
-        while True:
+        while play_count < args.num_timesteps:
             if state is not None:
                 actions, _, state, _ = model.step(
                     obs,
@@ -248,7 +264,7 @@ def main(args):
             else:
                 actions, _, _, _ = model.step(obs)
 
-            obs, rew, done, _ = env.step(actions)
+            obs, rew, done, info_dict = env.step(actions)
             episode_rew += rew[0] if isinstance(env, VecEnv) else rew
             p_actions = actions
             p_reward = rew
@@ -256,11 +272,46 @@ def main(args):
 
             env.render()
 
+            if episode_df is None:
+                headers = info_dict.keys()
+                episode_df = pd.DataFrame(columns=headers)
+
+            # TODO: Check if this works
+            episode_df = episode_df.append(
+                info_dict, ignore_index=True
+            )
+
             done = done.any() if isinstance(done, np.ndarray) else done
             if done:
+                # Reset the timestep (meta-rl)
+                timesteps = np.zeros((obs.shape[0], 1))
                 print('episode_rew={}'.format(episode_rew))
                 episode_rew = 0
                 obs = env.reset()
+
+                # Every time we are done, we will save the csv's
+                if hasattr(env, 'save_db_experiments'):
+                    logger.log("Saving database of experiments")
+                    env.save_db_experiments()
+                if episode_df is not None:
+                    outfile = open(episode_log_path, 'a')
+                    logger.log("Saving episode logs")
+                    episode_df.to_csv(outfile)
+                    outfile.close()
+                    episode_df = None
+
+            play_count += 1
+
+        # We also save when we exit
+        if hasattr(env, 'save_db_experiments'):
+            logger.log("Saving database of experiments")
+            env.save_db_experiments()
+        if episode_df is not None:
+            outfile = open(episode_log_path, 'a')
+            logger.log("Saving episode logs")
+            episode_df.to_csv(outfile)
+            outfile.close()
+            episode_df = None
 
     env.close()
 
