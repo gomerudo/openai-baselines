@@ -214,11 +214,9 @@ def main(args):
         logger.configure(format_strs=[])
         rank = MPI.COMM_WORLD.Get_rank()
 
-    # Change to avoid training when playing
-    if not args.play:
-        logger.log("Starting training")
-        model, env = train(args, extra_args)
-        logger.log("Training ended")
+    logger.log("Starting training")
+    model, env = train(args, extra_args)
+    logger.log("Training ended")
 
     if args.save_path is not None and rank == 0:
         save_path = osp.expanduser(args.save_path)

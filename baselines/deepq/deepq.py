@@ -194,9 +194,10 @@ def learn(env,
     resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
 
     # Create all the functions necessary to train the model
-
-    sess = get_session()
     set_global_seeds(seed)
+    
+    sess = get_session()
+    
 
     q_func = build_q_func(network, **network_kwargs)
 
