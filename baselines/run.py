@@ -265,7 +265,7 @@ def main(args):
             obs, rew, done, info_dict = env.step(actions)
             episode_rew += rew[0] if isinstance(env, VecEnv) else rew
             p_actions = actions
-            p_reward = rew
+            p_rewards = rew
             timesteps += 1
 
             env.render()
