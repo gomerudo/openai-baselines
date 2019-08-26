@@ -271,7 +271,7 @@ def main(args):
             env.render()
 
             if episode_df is None:
-                headers = info_dict.keys()
+                headers = info_dict[0].keys()
                 episode_df = pd.DataFrame(columns=headers)
 
             # TODO: Check if this works
