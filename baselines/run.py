@@ -267,6 +267,7 @@ def main(args):
             p_actions = actions
             p_rewards = rew
             timesteps += 1
+            dones = done
 
             env.render()
 
