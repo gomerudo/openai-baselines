@@ -292,11 +292,11 @@ def main(args):
                     logger.log("Saving database of experiments")
                     env.save_db_experiments()
                 if episode_df is not None:
-                    outfile = open(episode_log_path, 'a')
+                    outfile = open(episode_log_path, 'w')
                     logger.log("Saving episode logs")
                     episode_df.to_csv(outfile)
                     outfile.close()
-                    episode_df = None
+                    # episode_df = None
 
             play_count += 1
 
@@ -305,11 +305,11 @@ def main(args):
             logger.log("Saving database of experiments")
             env.save_db_experiments()
         if episode_df is not None:
-            outfile = open(episode_log_path, 'a')
+            outfile = open(episode_log_path, 'w')
             logger.log("Saving episode logs")
             episode_df.to_csv(outfile)
             outfile.close()
-            episode_df = None
+            # episode_df = None
 
     env.close()
 
