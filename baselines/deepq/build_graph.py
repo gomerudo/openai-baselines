@@ -174,6 +174,7 @@ def build_act(make_obs_ph, q_func, num_actions, scope="deepq", reuse=None):
 `       See the top of the file for details.
     """
     with tf.variable_scope(scope, reuse=reuse):
+        tf.set_random_seed(200)
         observations_ph = make_obs_ph("observation")
         stochastic_ph = tf.placeholder(tf.bool, (), name="stochastic")
         update_eps_ph = tf.placeholder(tf.float32, (), name="update_eps")
@@ -236,6 +237,7 @@ def build_act_with_param_noise(make_obs_ph, q_func, num_actions, scope="deepq", 
         param_noise_filter_func = default_param_noise_filter
 
     with tf.variable_scope(scope, reuse=reuse):
+        tf.set_random_seed(200)
         observations_ph = make_obs_ph("observation")
         stochastic_ph = tf.placeholder(tf.bool, (), name="stochastic")
         update_eps_ph = tf.placeholder(tf.float32, (), name="update_eps")

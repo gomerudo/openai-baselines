@@ -188,7 +188,6 @@ def learn(env,
     """
     set_global_seeds(seed)
     logger.log("Random seed set to:", seed)
-
     import resource
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
     logger.log("RM Soft limix was:", soft)
@@ -197,7 +196,8 @@ def learn(env,
 
     # Create all the functions necessary to train the model
     sess = get_session()
-    
+    set_global_seeds(seed)
+    logger.log("Random seed set to:", seed)
 
     q_func = build_q_func(network, **network_kwargs)
 
