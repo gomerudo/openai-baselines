@@ -95,7 +95,7 @@ def load_act(path):
 
 def learn(env,
           network,
-          seed=None,
+          seed=1023,
           lr=5e-4,
           total_timesteps=100000,
           buffer_size=50000,
@@ -186,6 +186,8 @@ def learn(env,
         Wrapper over act function. Adds ability to save it and load it.
         See header of baselines/deepq/categorical.py for details on the act function.
     """
+    set_global_seeds(seed)
+    logger.log("Random seed set to:", seed)
 
     import resource
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
@@ -194,8 +196,6 @@ def learn(env,
     resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
 
     # Create all the functions necessary to train the model
-    set_global_seeds(seed)
-    
     sess = get_session()
     
 
@@ -358,18 +358,18 @@ def learn(env,
                     saved_mean_reward = mean_100ep_reward
                 # Save the episode logs
                 if episode_df is not None:
-                    outfile = open(episode_log_path, 'a')
+                    outfile = open(episode_log_path, 'w')
                     logger.log("Saving episode logs")
                     episode_df.to_csv(outfile)
                     outfile.close()
-                    episode_df = None
+                    # episode_df = None
                 # Save the DB of experiments
                 if hasattr(env, 'save_db_experiments'):
                     logger.log("Saving database of experiments")
                     env.save_db_experiments()
 
         if episode_df is not None:
-            outfile = open(episode_log_path, 'a')
+            outfile = open(episode_log_path, 'w')
             logger.log("Saving episode logs")
             episode_df.to_csv(outfile)
             outfile.close()
